@@ -1,0 +1,278 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Command Centre</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 25px;
+  font-family: Arial, sans-serif;
+  background: #101827;
+  color: #f1f5f9;
+}
+
+.container {
+  max-width: 750px;
+  margin: 40px auto;
+}
+
+header {
+  margin-bottom: 30px;
+}
+
+header p {
+  color: #94a3b8;
+}
+
+h1 {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 22px;
+  margin-bottom: 20px;
+}
+
+h2 {
+  font-size: 19px;
+  margin-top: 0;
+}
+
+input {
+  width: 100%;
+  padding: 13px;
+  border: 1px solid #475569;
+  border-radius: 9px;
+  background: #0f172a;
+  color: white;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+button {
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 9px;
+  background: #38bdf8;
+  color: #082f49;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.85;
+}
+
+#taskList {
+  list-style: none;
+  padding: 0;
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid #334155;
+}
+
+.task span {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.task.done span {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.task input {
+  width: auto;
+  margin: 0;
+}
+
+.delete {
+  background: #7f1d1d;
+  color: white;
+  padding: 8px 11px;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+#empty {
+  color: #94a3b8;
+}
+
+footer {
+  color: #64748b;
+  text-align: center;
+  margin-top: 35px;
+  font-size: 13px;
+}
+
+@media (max-width: 500px) {
+  body {
+    padding: 15px;
+  }
+
+  .container {
+    margin: 20px auto;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <header>
+    <p id="date"></p>
+    <h1>My Command Centre</h1>
+    <p>Your space. Your goals. Your progress.</p>
+  </header>
+
+  <section class="card">
+    <h2>Today's Focus 🎯</h2>
+    <p>One task at a time. Make today count.</p>
+  </section>
+
+  <section class="card">
+    <h2>My Tasks</h2>
+
+    <form id="taskForm">
+      <input
+        id="taskInput"
+        type="text"
+        placeholder="What do you need to do?"
+        required
+      >
+      <button type="submit">+ Add Task</button>
+    </form>
+
+    <ul id="taskList"></ul>
+    <p id="empty">No tasks yet. Add your first one!</p>
+
+    <div class="stats">
+      <span id="total">0 tasks</span>
+      <span id="completed">0 completed</span>
+    </div>
+  </section>
+
+  <footer>
+    Built by me, powered by JavaScript.
+  </footer>
+
+</div>
+
+<script>
+const form = document.getElementById("taskForm");
+const input = document.getElementById("taskInput");
+const list = document.getElementById("taskList");
+const empty = document.getElementById("empty");
+
+let tasks = [];
+
+try {
+  tasks = JSON.parse(
+    localStorage.getItem("myTasks") || "[]"
+  );
+
+  if (!Array.isArray(tasks)) tasks = [];
+} catch {
+  tasks = [];
+}
+
+document.getElementById("date").textContent =
+  new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric"
+  });
+
+function saveTasks() {
+  localStorage.setItem("myTasks", JSON.stringify(tasks));
+}
+
+function renderTasks() {
+  list.innerHTML = "";
+
+  tasks.forEach(task => {
+    const item = document.createElement("li");
+    item.className = "task" +
+      (task.done ? " done" : "");
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = task.done;
+
+    checkbox.addEventListener("change", () => {
+      task.done = checkbox.checked;
+      saveTasks();
+      renderTasks();
+    });
+
+    const text = document.createElement("span");
+    text.textContent = task.text;
+
+    const remove = document.createElement("button");
+    remove.textContent = "Delete";
+    remove.className = "delete";
+
+    remove.addEventListener("click", () => {
+      tasks = tasks.filter(t => t.id !== task.id);
+      saveTasks();
+      renderTasks();
+    });
+
+    item.append(checkbox, text, remove);
+    list.appendChild(item);
+  });
+
+  empty.style.display = tasks.length ? "none" : "block";
+
+  document.getElementById("total").textContent =
+    tasks.length + " tasks";
+
+  document.getElementById("completed").textContent =
+    tasks.filter(t => t.done).length + " completed";
+}
+
+form.addEventListener("submit", event => {
+  event.preventDefault();
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  tasks.push({
+    id: Date.now() + Math.random(),
+    text: text,
+    done: false
+  });
+
+  saveTasks();
+  renderTasks();
+  input.value = "";
+});
+
+renderTasks();
+</script>
+
+</body>
+</html>

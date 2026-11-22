@@ -1,0 +1,485 @@
+</head>
+
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <div class="brand">COMMAND<span>.</span></div>
+  <div class="nav-label">WORKSPACE</div>
+
+  <nav class="nav-menu">
+    <button class="nav-btn active" data-page="dashboard">⌂ Dashboard</button>
+    <button class="nav-btn" data-page="planner">▦ Study Planner</button>
+    <button class="nav-btn" data-page="tasks">✓ Tasks</button>
+    <button class="nav-btn" data-page="subjects">▤ MBBS Tracker</button>
+    <button class="nav-btn" data-page="focus">◷ Focus Room</button>
+  </nav>
+</aside>
+
+<main class="main">
+
+  <header class="topbar">
+    <div>
+      <h1 id="pageTitle">Dashboard</h1>
+      <p class="subtitle">Your space. Your goals. Your progress.</p>
+    </div>
+    <div class="date" id="todayDate"></div>
+  </header>
+
+  <!-- DASHBOARD -->
+  <section class="page active" id="page-dashboard">
+
+    <div class="card">
+      <p class="muted">WELCOME TO YOUR COMMAND CENTRE</p>
+      <h2 style="font-size:25px">Make today count.</h2>
+      <p class="muted">Small steps. Consistent progress.</p>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="stat-label">Total tasks</div>
+        <div class="stat-number blue" id="dashTasks">0</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Completed tasks</div>
+        <div class="stat-number accent" id="dashDone">0</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">MBBS progress</div>
+        <div class="stat-number" id="dashProgress">0%</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Today's tasks</h2>
+      <div id="dashTaskList" class="empty">Nothing planned yet.</div>
+    </div>
+
+    <div class="card">
+      <h2>Upcoming study sessions</h2>
+      <div id="dashPlans" class="empty">No sessions scheduled yet.</div>
+    </div>
+  </section>
+
+  <!-- STUDY PLANNER -->
+  <section class="page" id="page-planner">
+    <div class="card">
+      <h2>Schedule a study session</h2>
+      <form id="planForm">
+        <label class="muted" for="planText">What will you study?</label>
+        <input id="planText" placeholder="e.g. Brachial plexus" required>
+
+        <label class="muted" for="planDate">Date</label>
+        <input id="planDate" type="date" required>
+
+        <label class="muted" for="planTime">Starting time</label>
+        <input id="planTime" type="time" required>
+
+        <button class="primary" type="submit">+ Add session</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Your study schedule</h2>
+      <div id="planList" class="empty">No sessions scheduled.</div>
+    </div>
+  </section>
+
+  <!-- TASKS -->
+  <section class="page" id="page-tasks">
+    <div class="card">
+      <h2>Add a task</h2>
+      <form id="taskForm">
+        <input id="taskInput" placeholder="What needs to be done?" required>
+        <button class="primary" type="submit">+ Add task</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Your tasks</h2>
+      <div id="taskList" class="empty">No tasks yet.</div>
+      <p class="muted" id="taskStats">0 tasks · 0 completed</p>
+    </div>
+  </section>
+
+  <!-- MBBS SUBJECT TRACKER -->
+  <section class="page" id="page-subjects">
+    <div class="card">
+      <h2>Your academic progress</h2>
+      <p class="muted">Record the number of topics you have completed in each subject.</p>
+      <div class="progress-bg">
+        <div class="progress-fill" id="overallBar" style="width:0%"></div>
+      </div>
+      <strong id="overallText">Overall progress: 0%</strong>
+    </div>
+
+    <div id="subjectList"></div>
+
+    <p class="muted">You can change the topic totals later to match your actual syllabus.</p>
+  </section>
+
+  <!-- FOCUS ROOM -->
+  <section class="page" id="page-focus">
+    <div class="card">
+      <h2 style="text-align:center">Pomodoro Focus Timer</h2>
+      <p class="muted" style="text-align:center">Focus on one task. Ignore distractions.</p>
+
+      <div class="timer" id="timerDisplay">25:00</div>
+
+      <div class="timer-buttons">
+        <button class="primary" id="startTimer">Start</button>
+        <button class="secondary" id="pauseTimer">Pause</button>
+        <button class="secondary" id="resetTimer">Reset</button>
+      </div>
+
+      <p class="muted" style="text-align:center;margin-top:22px">
+        A focus session is 25 minutes. Take a short break afterwards.
+      </p>
+    </div>
+  </section>
+
+  <footer>COMMAND CENTRE · BUILT BY YOU</footer>
+</main>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function load(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value === null ? fallback : value;
+  } catch {
+    return fallback;
+  }
+}
+
+function save(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+// Keep existing tasks from our first version.
+let tasks = load("myTasks", []);
+if (!Array.isArray(tasks)) tasks = [];
+
+let plans = load("myPlans", []);
+if (!Array.isArray(plans)) plans = [];
+
+let subjects = load("mySubjects", [
+  {name:"General Anatomy", done:0, total:50},
+  {name:"Physiology", done:0, total:50},
+  {name:"Biochemistry", done:0, total:50}
+]);
+
+const pageNames = {
+  dashboard:"Dashboard",
+  planner:"Study Planner",
+  tasks:"Tasks",
+  subjects:"MBBS Tracker",
+  focus:"Focus Room"
+};
+
+// Navigation
+document.querySelectorAll(".nav-btn").forEach(button => {
+  button.addEventListener("click", () => {
+    const page = button.dataset.page;
+
+    document.querySelectorAll(".page").forEach(section => {
+      section.classList.remove("active");
+    });
+
+    $("page-" + page).classList.add("active");
+
+    document.querySelectorAll(".nav-btn").forEach(btn => {
+      btn.classList.remove("active");
+    });
+
+    button.classList.add("active");
+    $("pageTitle").textContent = pageNames[page];
+  });
+});
+
+// Date
+$("todayDate").textContent =
+  new Date().toLocaleDateString(undefined, {
+    weekday:"short",
+    month:"short",
+    day:"numeric",
+    year:"numeric"
+  });
+
+$("planDate").value =
+  new Date().toLocaleDateString("en-CA");
+
+// TASKS
+function renderTasks() {
+  $("taskList").innerHTML = "";
+  $("dashTaskList").innerHTML = "";
+
+  tasks.forEach(task => {
+    const row = document.createElement("div");
+    row.className = "task-row" + (task.done ? " done" : "");
+
+    const check = document.createElement("input");
+    check.type = "checkbox";
+    check.checked = task.done;
+
+    check.addEventListener("change", () => {
+      task.done = check.checked;
+      save("myTasks", tasks);
+      renderAll();
+    });
+
+    const label = document.createElement("span");
+    label.textContent = task.text;
+
+    const del = document.createElement("button");
+    del.textContent = "Delete";
+    del.className = "danger";
+    del.addEventListener("click", () => {
+      tasks = tasks.filter(t => t.id !== task.id);
+      save("myTasks", tasks);
+      renderAll();
+    });
+
+    row.append(check, label, del);
+    $("taskList").appendChild(row);
+
+    if (!task.done && $("dashTaskList").children.length < 5) {
+      const preview = document.createElement("p");
+      preview.className = "muted";
+      preview.textContent = "• " + task.text;
+      $("dashTaskList").appendChild(preview);
+    }
+  });
+
+  if (!tasks.length) {
+    $("taskList").textContent = "No tasks yet.";
+    $("dashTaskList").textContent = "Nothing planned yet.";
+  } else if (!$("dashTaskList").children.length) {
+    $("dashTaskList").textContent = "All tasks completed. Nice work!";
+  }
+
+  const completed = tasks.filter(t => t.done).length;
+
+  $("taskStats").textContent =
+    tasks.length + " tasks · " + completed + " completed";
+
+  $("dashTasks").textContent = tasks.length;
+  $("dashDone").textContent = completed;
+}
+
+$("taskForm").addEventListener("submit", event => {
+  event.preventDefault();
+
+  const text = $("taskInput").value.trim();
+  if (!text) return;
+
+  tasks.push({
+    id:Date.now() + Math.random(),
+    text,
+    done:false
+  });
+
+  save("myTasks", tasks);
+  $("taskInput").value = "";
+  renderAll();
+});
+
+// STUDY PLANNER
+function renderPlans() {
+  $("planList").innerHTML = "";
+  $("dashPlans").innerHTML = "";
+
+  const sorted = [...plans].sort((a,b) =>
+    (a.date + a.time).localeCompare(b.date + b.time)
+  );
+
+  sorted.forEach(plan => {
+    const row = document.createElement("div");
+    row.className = "plan-row";
+
+    const details = document.createElement("div");
+    details.style.flex = "1";
+
+    const topic = document.createElement("strong");
+    topic.textContent = plan.text;
+
+    const time = document.createElement("p");
+    time.className = "muted";
+    time.textContent = plan.date + " · " + plan.time;
+
+    details.append(topic,time);
+
+    const del = document.createElement("button");
+    del.textContent = "Delete";
+    del.className = "danger";
+    del.addEventListener("click", () => {
+      plans = plans.filter(p => p.id !== plan.id);
+      save("myPlans", plans);
+      renderAll();
+    });
+
+    row.append(details,del);
+    $("planList").appendChild(row);
+
+    if (plan.date >= new Date().toLocaleDateString("en-CA")) {
+      const preview = document.createElement("p");
+      preview.className = "muted";
+      preview.textContent = plan.date + " · " + plan.time + " · " + plan.text;
+
+      if ($("dashPlans").children.length < 4) {
+        $("dashPlans").appendChild(preview);
+      }
+    }
+  });
+
+  if (!plans.length) {
+    $("planList").textContent = "No sessions scheduled.";
+    $("dashPlans").textContent = "No sessions scheduled yet.";
+  }
+}
+
+$("planForm").addEventListener("submit", event => {
+  event.preventDefault();
+
+  plans.push({
+    id:Date.now() + Math.random(),
+    text:$("planText").value.trim(),
+    date:$("planDate").value,
+    time:$("planTime").value
+  });
+
+  save("myPlans", plans);
+  $("planText").value = "";
+  renderAll();
+});
+
+// MBBS SUBJECT TRACKER
+function renderSubjects() {
+  $("subjectList").innerHTML = "";
+
+  let totalDone = 0;
+  let totalTopics = 0;
+
+  subjects.forEach((subject,index) => {
+    const done = Number(subject.done) || 0;
+    const total = Math.max(1,Number(subject.total) || 1);
+    const percent = Math.min(100,Math.round(done / total * 100));
+
+    totalDone += done;
+    totalTopics += total;
+
+    const card = document.createElement("div");
+    card.className = "card subject-card";
+
+    const heading = document.createElement("div");
+    heading.className = "subject-heading";
+
+    const name = document.createElement("h3");
+    name.textContent = subject.name;
+
+    const count = document.createElement("span");
+    count.className = "muted";
+    count.textContent = done + " / " + total;
+
+    heading.append(name,count);
+
+    const bar = document.createElement("div");
+    bar.className = "progress-bg";
+
+    const fill = document.createElement("div");
+    fill.className = "progress-fill";
+    fill.style.width = percent + "%";
+    bar.appendChild(fill);
+
+    const actions = document.createElement("div");
+    actions.className = "subject-actions";
+
+    const minus = document.createElement("button");
+    minus.className = "secondary";
+    minus.textContent = "−";
+
+    minus.addEventListener("click", () => {
+      subject.done = Math.max(0,done - 1);
+      save("mySubjects",subjects);
+      renderAll();
+    });
+
+    const plus = document.createElement("button");
+    plus.className = "primary";
+    plus.textContent = "+ Complete topic";
+
+    plus.addEventListener("click", () => {
+      subject.done = Math.min(total,done + 1);
+      save("mySubjects",subjects);
+      renderAll();
+    });
+
+    actions.append(minus,plus);
+
+    const percentage = document.createElement("p");
+    percentage.className = "muted";
+    percentage.textContent = percent + "% completed";
+
+    card.append(heading,bar,percentage,actions);
+    $("subjectList").appendChild(card);
+  });
+
+  const overall = totalTopics
+    ? Math.round(totalDone / totalTopics * 100)
+    : 0;
+
+  $("overallBar").style.width = overall + "%";
+  $("overallText").textContent = "Overall progress: " + overall + "%";
+  $("dashProgress").textContent = overall + "%";
+}
+
+// POMODORO TIMER
+let remaining = 25 * 60;
+let interval = null;
+
+function displayTimer() {
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
+
+  $("timerDisplay").textContent =
+    String(minutes).padStart(2,"0") + ":" +
+    String(seconds).padStart(2,"0");
+}
+
+$("startTimer").addEventListener("click", () => {
+  if (interval !== null || remaining <= 0) return;
+
+  interval = setInterval(() => {
+    remaining--;
+    displayTimer();
+
+    if (remaining <= 0) {
+      clearInterval(interval);
+      interval = null;
+      alert("Focus session complete! Take a short break.");
+    }
+  },1000);
+});
+
+$("pauseTimer").addEventListener("click", () => {
+  clearInterval(interval);
+  interval = null;
+});
+
+$("resetTimer").addEventListener("click", () => {
+  clearInterval(interval);
+  interval = null;
+  remaining = 25 * 60;
+  displayTimer();
+});
+
+function renderAll() {
+  renderTasks();
+  renderPlans();
+  renderSubjects();
+}
+
+renderAll();
+displayTimer();
